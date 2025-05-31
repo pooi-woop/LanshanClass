@@ -1,4 +1,5 @@
 // FilePath: C:/LanshanClass1.3/utils\JWT.go
+
 package utils
 
 import (
@@ -6,7 +7,8 @@ import (
 	"time"
 )
 
-var jwtSecret = []byte("114514") // JWT 密钥
+var JwtSecret = []byte("114514") // JWT 密钥
+
 // Claims 自定义 JWT Claims
 type Claims struct {
 	Username string `json:"username"`
@@ -21,6 +23,6 @@ func GenerateToken(username string) string {
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, _ := token.SignedString(jwtSecret)
+	tokenString, _ := token.SignedString(JwtSecret)
 	return tokenString
 }

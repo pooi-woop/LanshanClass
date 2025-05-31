@@ -1,4 +1,4 @@
-// FilePath: C:/LanshanClass1.3/service\auth.service.go
+// auth.service.go
 package authservice
 
 import (

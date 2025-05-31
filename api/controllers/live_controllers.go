@@ -1,16 +1,20 @@
-// FilePath: C:/LanshanClass1.3/api/controllers\live_controllers.go
-// FilePath: C:/LanshanClass1.3/api/controllers\live_controllers.go
+// FilePath: C:/LanshanClass1.3/api/controllers/live_controllers.go
+// FilePath: C:/LanshanClass1.3/api/controllers/live_controllers.go
 package controllers
 
 import (
+	"LanshanClass1.3/utils"
 	"context"
+	"errors"
+	"github.com/golang-jwt/jwt/v4"
 	"io"
 	"net/http"
 
-	"LanshanClass1.3/proto" // 替换为你的 proto 文件生成的 Go 包路径
+	"LanshanClass1.3/proto"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -33,6 +37,19 @@ func createGRPCClient(c *gin.Context) (proto.LiveClassServiceClient, *grpc.Clien
 	return proto.NewLiveClassServiceClient(conn), conn, nil
 }
 
+// extractToken 从 HTTP 请求中提取 JWT Token
+func extractToken(c *gin.Context) (string, error) {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		return "", errors.New("authorization header is required")
+	}
+	token := authHeader[len("Bearer "):]
+	if len(token) == 0 {
+		return "", errors.New("token is required")
+	}
+	return token, nil
+}
+
 // CreateLiveClass 创建直播课
 func CreateLiveClass(c *gin.Context) {
 	var req proto.CreateLiveClassRequest
@@ -47,7 +64,17 @@ func CreateLiveClass(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	resp, err := client.CreateLiveClass(context.Background(), &req)
+	// 获取 JWT Token
+	token, err := extractToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 将 Token 传递给 gRPC 客户端
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", token)
+
+	resp, err := client.CreateLiveClass(ctx, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to call gRPC service"})
 		return
@@ -70,8 +97,18 @@ func JoinLiveClass(c *gin.Context) {
 	}
 	defer conn.Close()
 
+	// 获取 JWT Token
+	token, err := extractToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 将 Token 传递给 gRPC 客户端
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", token)
+
 	// 创建双向流
-	stream, err := client.JoinLiveClass(context.Background())
+	stream, err := client.JoinLiveClass(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to call gRPC service"})
 		return
@@ -116,7 +153,28 @@ func SendMessage(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	resp, err := client.SendMessage(context.Background(), &req)
+	// 获取 JWT Token
+	token, err := extractToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 解析 JWT Token 获取用户名
+	claims := &utils.Claims{}
+	_, err = jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return utils.JwtSecret, nil
+	})
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+	req.SenderName = claims.Username
+
+	// 将 Token 传递给 gRPC 客户端
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", token)
+
+	resp, err := client.SendMessage(ctx, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to call gRPC service"})
 		return
@@ -124,8 +182,6 @@ func SendMessage(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"status": resp.Status})
 }
-
-// ReceiveMessages 接收消息（流式接口）
 
 // EndLiveClass 结束直播课
 func EndLiveClass(c *gin.Context) {
@@ -141,7 +197,17 @@ func EndLiveClass(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	resp, err := client.EndLiveClass(context.Background(), &proto.EndLiveClassRequest{ClassId: classID})
+	// 获取 JWT Token
+	token, err := extractToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 将 Token 传递给 gRPC 客户端
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", token)
+
+	resp, err := client.EndLiveClass(ctx, &proto.EndLiveClassRequest{ClassId: classID})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to call gRPC service"})
 		return
@@ -164,7 +230,17 @@ func PublishQuestion(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	resp, err := client.PublishQuestion(context.Background(), &req)
+	// 获取 JWT Token
+	token, err := extractToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 将 Token 传递给 gRPC 客户端
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", token)
+
+	resp, err := client.PublishQuestion(ctx, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to call gRPC service"})
 		return
@@ -187,7 +263,28 @@ func SubmitAnswer(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	resp, err := client.SubmitAnswer(context.Background(), &req)
+	// 获取 JWT Token
+	token, err := extractToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 解析 JWT Token 获取用户名
+	claims := &utils.Claims{}
+	_, err = jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return utils.JwtSecret, nil
+	})
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+	req.StudentName = claims.Username
+
+	// 将 Token 传递给 gRPC 客户端
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", token)
+
+	resp, err := client.SubmitAnswer(ctx, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to call gRPC service"})
 		return
@@ -211,7 +308,17 @@ func GetAnswerStatistics(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	stream, err := client.GetAnswerStatistics(context.Background(), &proto.GetAnswerStatisticsRequest{ClassId: classID, QuestionId: questionID})
+	// 获取 JWT Token
+	token, err := extractToken(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 将 Token 传递给 gRPC 客户端
+	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", token)
+
+	stream, err := client.GetAnswerStatistics(ctx, &proto.GetAnswerStatisticsRequest{ClassId: classID, QuestionId: questionID})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to call gRPC service"})
 		return

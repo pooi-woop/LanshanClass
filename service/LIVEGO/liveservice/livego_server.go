@@ -3,10 +3,16 @@ package liveservice
 import (
 	"context"
 	"errors"
+	"github.com/dgrijalva/jwt-go"
 	"sync"
 	"time"
 
 	pb "LanshanClass1.3/proto"
+	"LanshanClass1.3/utils"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 // LiveClassServiceServer 定义服务
@@ -32,15 +38,41 @@ func NewLiveClassServiceServer() *LiveClassServiceServer {
 	}
 }
 
+// authenticateToken 验证 JWT Token 并返回用户名
+func (s *LiveClassServiceServer) authenticateToken(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", status.Errorf(codes.Unauthenticated, "missing metadata")
+	}
+
+	authHeader, ok := md["authorization"]
+	if !ok || len(authHeader) == 0 {
+		return "", status.Errorf(codes.Unauthenticated, "missing authorization header")
+	}
+
+	token := authHeader[0][len("Bearer "):]
+	claims := &utils.Claims{}
+
+	// 解析 JWT Token
+	_, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return utils.JwtSecret, nil
+	})
+	if err != nil {
+		return "", status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
+	}
+
+	return claims.Username, nil
+}
+
 // CreateLiveClass 创建直播课
 func (s *LiveClassServiceServer) CreateLiveClass(ctx context.Context, req *pb.CreateLiveClassRequest) (*pb.CreateLiveClassResponse, error) {
+	// 检查是否存在该直播课
 	classID := req.ClassName
 	streamURL := req.StreamUrl
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// 检查是否已存在该直播课
 	if _, ok := s.streams[classID]; ok {
 		return nil, errors.New("live class already exists")
 	}
@@ -127,6 +159,11 @@ func (s *LiveClassServiceServer) JoinLiveClass(stream pb.LiveClassService_JoinLi
 
 // SendMessage 发送消息
 func (s *LiveClassServiceServer) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
+	username, err := s.authenticateToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	classID := req.ClassId
 	message := req.Message
 
@@ -138,6 +175,9 @@ func (s *LiveClassServiceServer) SendMessage(ctx context.Context, req *pb.SendMe
 	if !ok {
 		return nil, errors.New("live class not found")
 	}
+
+	// 设置消息的发送者为用户名
+	message.SenderName = username
 
 	// 将消息发送到消息队列
 	select {
@@ -206,8 +246,8 @@ func (s *LiveClassServiceServer) PublishQuestion(ctx context.Context, req *pb.Pu
 	liveClass.Answers[questionID] = make(map[string]int32)
 
 	return &pb.PublishQuestionResponse{
-		Status:      "success",
-		QuestionId:  questionID,
+		Status:     "success",
+		QuestionId: questionID,
 	}, nil
 }
 
