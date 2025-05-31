@@ -1,0 +1,7 @@
+mysql:
+  dsn: "root:qweasdzxc@tcp(127.0.0.1:3306)/woop"
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
