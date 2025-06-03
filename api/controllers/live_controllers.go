@@ -74,13 +74,18 @@ func CreateLiveClass(c *gin.Context) {
 	// 将 Token 传递给 gRPC 客户端
 	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", token)
 
+	// 调用 gRPC 服务创建直播课
 	resp, err := client.CreateLiveClass(ctx, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to call gRPC service"})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"classID": resp.ClassId, "status": resp.Status})
+	c.JSON(http.StatusCreated, gin.H{
+		"classID":   resp.ClassId,
+		"status":    resp.Status,
+		"streamKey": resp.StreamKey, // 返回推流密钥给用户
+	})
 }
 
 // JoinLiveClass 加入直播课

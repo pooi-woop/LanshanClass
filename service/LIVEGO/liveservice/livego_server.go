@@ -1,9 +1,12 @@
 package liveservice
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/dgrijalva/jwt-go"
+	"net/http"
 	"sync"
 	"time"
 
@@ -65,10 +68,11 @@ func (s *LiveClassServiceServer) authenticateToken(ctx context.Context) (string,
 }
 
 // CreateLiveClass 创建直播课
+// CreateLiveClass 创建直播课
 func (s *LiveClassServiceServer) CreateLiveClass(ctx context.Context, req *pb.CreateLiveClassRequest) (*pb.CreateLiveClassResponse, error) {
 	// 检查是否存在该直播课
 	classID := req.ClassName
-	streamURL := req.StreamUrl
+	roomName := req.RoomName
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -77,9 +81,24 @@ func (s *LiveClassServiceServer) CreateLiveClass(ctx context.Context, req *pb.Cr
 		return nil, errors.New("live class already exists")
 	}
 
+	// 调用 LiveGo 服务器获取推流密钥
+	livegoURL := "http://localhost:8080/api/rtmp/publish" // 假设 LiveGo 服务器的 API 地址
+	livegoResp, err := http.Post(livegoURL, "application/json", bytes.NewBuffer([]byte(`{"roomname": "`+roomName+`"}`)))
+	if err != nil {
+		return nil, err
+	}
+	defer livegoResp.Body.Close()
+
+	var livegoData map[string]interface{}
+	if err := json.NewDecoder(livegoResp.Body).Decode(&livegoData); err != nil {
+		return nil, err
+	}
+
+	streamKey := livegoData["stream_key"].(string) // 获取推流密钥
+
 	// 初始化直播课
 	liveClass := &LiveClass{
-		StreamURL:    streamURL,
+		StreamURL:    streamKey,
 		MessageQueue: make(chan *pb.Message, 100),
 		Subscribers:  []chan *pb.Message{},
 		Questions:    make(map[string]*pb.Question),
@@ -89,8 +108,9 @@ func (s *LiveClassServiceServer) CreateLiveClass(ctx context.Context, req *pb.Cr
 	s.streams[classID] = liveClass
 
 	return &pb.CreateLiveClassResponse{
-		ClassId: classID,
-		Status:  "success",
+		ClassId:   classID,
+		Status:    "success",
+		StreamKey: streamKey, // 返回推流密钥
 	}, nil
 }
 

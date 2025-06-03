@@ -25,13 +25,14 @@ service LiveClassService {
 message CreateLiveClassRequest {
   string teacher_name = 1; // 教师名称
   string class_name = 2; // 直播课名称
-  string stream_url = 3;
+  string room_name =3;
 }
 
 // 创建直播课响应
 message CreateLiveClassResponse {
   string class_id = 1; // 直播课ID
   string status = 2; // 状态信息
+  string stream_key = 3;
 }
 
 // 加入直播课请求

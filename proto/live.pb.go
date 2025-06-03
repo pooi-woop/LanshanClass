@@ -26,7 +26,7 @@ type CreateLiveClassRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TeacherName   string                 `protobuf:"bytes,1,opt,name=teacher_name,json=teacherName,proto3" json:"teacher_name,omitempty"` // 教师名称
 	ClassName     string                 `protobuf:"bytes,2,opt,name=class_name,json=className,proto3" json:"class_name,omitempty"`       // 直播课名称
-	StreamUrl     string                 `protobuf:"bytes,3,opt,name=stream_url,json=streamUrl,proto3" json:"stream_url,omitempty"`
+	RoomName      string                 `protobuf:"bytes,3,opt,name=room_name,json=roomName,proto3" json:"room_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -75,9 +75,9 @@ func (x *CreateLiveClassRequest) GetClassName() string {
 	return ""
 }
 
-func (x *CreateLiveClassRequest) GetStreamUrl() string {
+func (x *CreateLiveClassRequest) GetRoomName() string {
 	if x != nil {
-		return x.StreamUrl
+		return x.RoomName
 	}
 	return ""
 }
@@ -87,6 +87,7 @@ type CreateLiveClassResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ClassId       string                 `protobuf:"bytes,1,opt,name=class_id,json=classId,proto3" json:"class_id,omitempty"` // 直播课ID
 	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`                  // 状态信息
+	StreamKey     string                 `protobuf:"bytes,3,opt,name=stream_key,json=streamKey,proto3" json:"stream_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -131,6 +132,13 @@ func (x *CreateLiveClassResponse) GetClassId() string {
 func (x *CreateLiveClassResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
+	}
+	return ""
+}
+
+func (x *CreateLiveClassResponse) GetStreamKey() string {
+	if x != nil {
+		return x.StreamKey
 	}
 	return ""
 }
@@ -898,16 +906,17 @@ var File_live_proto protoreflect.FileDescriptor
 const file_live_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"live.proto\x12\x05proto\"y\n" +
+	"live.proto\x12\x05proto\"w\n" +
 	"\x16CreateLiveClassRequest\x12!\n" +
 	"\fteacher_name\x18\x01 \x01(\tR\vteacherName\x12\x1d\n" +
 	"\n" +
-	"class_name\x18\x02 \x01(\tR\tclassName\x12\x1d\n" +
-	"\n" +
-	"stream_url\x18\x03 \x01(\tR\tstreamUrl\"L\n" +
+	"class_name\x18\x02 \x01(\tR\tclassName\x12\x1b\n" +
+	"\troom_name\x18\x03 \x01(\tR\broomName\"k\n" +
 	"\x17CreateLiveClassResponse\x12\x19\n" +
 	"\bclass_id\x18\x01 \x01(\tR\aclassId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\"T\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"stream_key\x18\x03 \x01(\tR\tstreamKey\"T\n" +
 	"\x14JoinLiveClassRequest\x12\x19\n" +
 	"\bclass_id\x18\x01 \x01(\tR\aclassId\x12!\n" +
 	"\fstudent_name\x18\x02 \x01(\tR\vstudentName\"x\n" +

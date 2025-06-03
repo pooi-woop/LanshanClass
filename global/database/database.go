@@ -35,9 +35,7 @@ func Init() {
 func initConfig() {
 	// 初始化 Viper
 	Config = viper.New()
-	Config.SetConfigName("database")                         // 配置文件名称（不包含扩展名）
-	Config.SetConfigType("yaml")                             // 配置文件类型
-	Config.AddConfigPath("C:/LanshanClass1.3/global/config") // 配置文件路径
+	Config.SetConfigFile("./global/config/database.yaml")
 
 	// 读取配置文件
 	if err := Config.ReadInConfig(); err != nil {
