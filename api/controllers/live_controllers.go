@@ -19,7 +19,7 @@ import (
 
 var (
 	// 假设 gRPC 服务地址
-	grpcServerAddress = "localhost:50052"
+	grpcServerAddress = "127.0.0.1:50052"
 )
 
 // dialGRPC 连接到 gRPC 服务
@@ -209,10 +209,25 @@ func EndLiveClass(c *gin.Context) {
 		return
 	}
 
+	// 解析 JWT Token 获取用户名
+	claims := &utils.Claims{}
+	_, err = jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return utils.JwtSecret, nil
+	})
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+	username := claims.Username
+
 	// 将 Token 传递给 gRPC 客户端
 	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", token)
 
-	resp, err := client.EndLiveClass(ctx, &proto.EndLiveClassRequest{ClassId: classID})
+	// 调用 gRPC 服务结束直播课
+	resp, err := client.EndLiveClass(ctx, &proto.EndLiveClassRequest{
+		ClassId:  classID,
+		Username: username, // 传递用户名
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to call gRPC service"})
 		return

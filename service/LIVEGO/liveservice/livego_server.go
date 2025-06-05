@@ -27,11 +27,12 @@ type LiveClassServiceServer struct {
 
 // LiveClass 定义直播间结构
 type LiveClass struct {
-	StreamURL    string
-	MessageQueue chan *pb.Message
-	Subscribers  []chan *pb.Message
-	Questions    map[string]*pb.Question
-	Answers      map[string]map[string]int32
+	TeacherName  string                      // 直播间发起人的用户名
+	StreamURL    string                      // 推流地址
+	MessageQueue chan *pb.Message            // 消息队列
+	Subscribers  []chan *pb.Message          // 订阅者列表
+	Questions    map[string]*pb.Question     // 题目列表
+	Answers      map[string]map[string]int32 // 答案统计
 }
 
 // NewLiveClassServiceServer 初始化服务
@@ -68,7 +69,6 @@ func (s *LiveClassServiceServer) authenticateToken(ctx context.Context) (string,
 }
 
 // CreateLiveClass 创建直播课
-// CreateLiveClass 创建直播课
 func (s *LiveClassServiceServer) CreateLiveClass(ctx context.Context, req *pb.CreateLiveClassRequest) (*pb.CreateLiveClassResponse, error) {
 	// 检查是否存在该直播课
 	classID := req.ClassName
@@ -98,6 +98,7 @@ func (s *LiveClassServiceServer) CreateLiveClass(ctx context.Context, req *pb.Cr
 
 	// 初始化直播课
 	liveClass := &LiveClass{
+		TeacherName:  req.TeacherName, // 记录发起人的用户名
 		StreamURL:    streamKey,
 		MessageQueue: make(chan *pb.Message, 100),
 		Subscribers:  []chan *pb.Message{},
@@ -213,6 +214,7 @@ func (s *LiveClassServiceServer) SendMessage(ctx context.Context, req *pb.SendMe
 // EndLiveClass 结束直播课
 func (s *LiveClassServiceServer) EndLiveClass(ctx context.Context, req *pb.EndLiveClassRequest) (*pb.EndLiveClassResponse, error) {
 	classID := req.ClassId
+	username := req.Username
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -221,6 +223,11 @@ func (s *LiveClassServiceServer) EndLiveClass(ctx context.Context, req *pb.EndLi
 	liveClass, ok := s.streams[classID]
 	if !ok {
 		return nil, errors.New("live class not found")
+	}
+
+	// 检查请求用户是否是直播间的发起人
+	if liveClass.TeacherName != username {
+		return nil, status.Errorf(codes.PermissionDenied, "only the class initiator can end the live class")
 	}
 
 	// 关闭消息队列

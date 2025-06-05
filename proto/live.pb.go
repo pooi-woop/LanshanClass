@@ -436,6 +436,7 @@ func (x *Message) GetTimestamp() int64 {
 type EndLiveClassRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ClassId       string                 `protobuf:"bytes,1,opt,name=class_id,json=classId,proto3" json:"class_id,omitempty"` // 直播课ID
+	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`              // 用户名
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -473,6 +474,13 @@ func (*EndLiveClassRequest) Descriptor() ([]byte, []int) {
 func (x *EndLiveClassRequest) GetClassId() string {
 	if x != nil {
 		return x.ClassId
+	}
+	return ""
+}
+
+func (x *EndLiveClassRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
 	}
 	return ""
 }
@@ -937,9 +945,10 @@ const file_live_proto_rawDesc = "" +
 	"\vsender_name\x18\x01 \x01(\tR\n" +
 	"senderName\x12'\n" +
 	"\x0fmessage_content\x18\x02 \x01(\tR\x0emessageContent\x12\x1c\n" +
-	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\"0\n" +
+	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\"L\n" +
 	"\x13EndLiveClassRequest\x12\x19\n" +
-	"\bclass_id\x18\x01 \x01(\tR\aclassId\".\n" +
+	"\bclass_id\x18\x01 \x01(\tR\aclassId\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\".\n" +
 	"\x14EndLiveClassResponse\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\"O\n" +
 	"\x16PublishQuestionRequest\x12\x19\n" +

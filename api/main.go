@@ -18,19 +18,30 @@ import (
 )
 
 func main() {
+	database.Init()
 	// 初始化 gRPC 客户端
-	conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial("127.0.0.1:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)
 	}
 	defer conn.Close()
 	controllers.AuthServiceClient = proto.NewAuthServiceClient(conn)
 
-	database.Init()
 	r := gin.Default()
 
 	// 注册鉴权中间件
 	r.Use(func(c *gin.Context) {
+		// 获取当前请求的路径
+		path := c.Request.URL.Path
+		// 获取请求方法
+		method := c.Request.Method
+
+		// 如果是注册或登录请求，则跳过认证
+		if (path == "/register" || path == "/login") && method == "POST" {
+			c.Next()
+			return
+		}
+
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.JSON(401, gin.H{"error": "Authorization header is required"})

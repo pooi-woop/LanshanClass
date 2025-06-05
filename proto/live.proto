@@ -70,12 +70,13 @@ message Message {
 
 // 结束直播课请求
 message EndLiveClassRequest {
-  string class_id = 1; // 直播课ID
+  string class_id = 1;   // 直播课ID
+  string username = 2;   // 用户名
 }
 
 // 结束直播课响应
 message EndLiveClassResponse {
-  string status = 1; // 状态信息
+  string status = 1;     // 状态信息
 }
 
 // 发布题目请求
