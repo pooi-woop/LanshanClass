@@ -11,7 +11,7 @@ import (
 // User 表示用户表
 type User struct {
 	ID       uint   `gorm:"primaryKey;autoIncrement"`
-	Username string `gorm:"uniqueIndex;not_null"`
+	Username string `gorm:"type:varchar(100);uniqueIndex;not null"`
 	Salt     string `gorm:"not_null"`
 	Hash     string `gorm:"not_null"`
 }

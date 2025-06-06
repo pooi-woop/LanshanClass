@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/golang-jwt/jwt/v4"
 	"io"
+	"log"
 	"net/http"
 
 	"LanshanClass1.3/proto"
@@ -60,7 +61,7 @@ func CreateLiveClass(c *gin.Context) {
 
 	client, conn, err := createGRPCClient(c)
 	if err != nil {
-		return
+		log.Printf("failed to create live class: %v", err)
 	}
 	defer conn.Close()
 
@@ -78,6 +79,7 @@ func CreateLiveClass(c *gin.Context) {
 	resp, err := client.CreateLiveClass(ctx, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to call gRPC service"})
+		log.Printf("failed to call gRPC service: %v", err)
 		return
 	}
 

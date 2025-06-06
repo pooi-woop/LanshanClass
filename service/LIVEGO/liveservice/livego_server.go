@@ -1,11 +1,11 @@
 package liveservice
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"github.com/dgrijalva/jwt-go"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -70,35 +70,36 @@ func (s *LiveClassServiceServer) authenticateToken(ctx context.Context) (string,
 
 // CreateLiveClass 创建直播课
 func (s *LiveClassServiceServer) CreateLiveClass(ctx context.Context, req *pb.CreateLiveClassRequest) (*pb.CreateLiveClassResponse, error) {
-	// 检查是否存在该直播课
-	classID := req.ClassName
-	roomName := req.RoomName
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if _, ok := s.streams[classID]; ok {
-		return nil, errors.New("live class already exists")
-	}
-
 	// 调用 LiveGo 服务器获取推流密钥
-	livegoURL := "http://localhost:8080/api/rtmp/publish" // 假设 LiveGo 服务器的 API 地址
-	livegoResp, err := http.Post(livegoURL, "application/json", bytes.NewBuffer([]byte(`{"roomname": "`+roomName+`"}`)))
+	livegoURL := "http://localhost:8090/control/get?room=" + req.RoomName
+
+	// 发送 GET 请求以获取推流密钥
+	livegoResp, err := http.Get(livegoURL)
 	if err != nil {
+		log.Printf("Failed to call LiveGo server: %v", err)
 		return nil, err
 	}
 	defer livegoResp.Body.Close()
 
-	var livegoData map[string]interface{}
-	if err := json.NewDecoder(livegoResp.Body).Decode(&livegoData); err != nil {
+	// 打印 LiveGo 服务器返回的完整响应内容
+	var result map[string]interface{}
+	err = json.NewDecoder(livegoResp.Body).Decode(&result)
+	if err != nil {
+		log.Printf("Failed to decode LiveGo response: %v", err)
 		return nil, err
 	}
+	log.Printf("LiveGo response: %+v", result)
 
-	streamKey := livegoData["stream_key"].(string) // 获取推流密钥
+	// 从响应体中提取推流密钥
+	streamKey, ok := result["data"].(string) // 修改字段名从 "streamKey" 到 "data"
+	if !ok {
+		log.Printf("Failed to extract stream key from response: %+v", result)
+		return nil, errors.New("failed to extract stream key from response")
+	}
 
 	// 初始化直播课
 	liveClass := &LiveClass{
-		TeacherName:  req.TeacherName, // 记录发起人的用户名
+		TeacherName:  req.TeacherName,
 		StreamURL:    streamKey,
 		MessageQueue: make(chan *pb.Message, 100),
 		Subscribers:  []chan *pb.Message{},
@@ -106,12 +107,23 @@ func (s *LiveClassServiceServer) CreateLiveClass(ctx context.Context, req *pb.Cr
 		Answers:      make(map[string]map[string]int32),
 	}
 
-	s.streams[classID] = liveClass
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// 打印 s.streams 的状态
+	log.Printf("Streams map: %+v", s.streams)
+
+	if s.streams == nil {
+		log.Printf("Streams map is nil, initializing it")
+		s.streams = make(map[string]*LiveClass)
+	}
+
+	s.streams[req.ClassName] = liveClass
 
 	return &pb.CreateLiveClassResponse{
-		ClassId:   classID,
+		ClassId:   req.ClassName,
 		Status:    "success",
-		StreamKey: streamKey, // 返回推流密钥
+		StreamKey: streamKey,
 	}, nil
 }
 

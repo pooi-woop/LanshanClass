@@ -27,7 +27,9 @@ func Init() {
 
 	// 初始化 MySQL 数据库连接
 	initMySQL()
-
+	if DB == nil {
+		log.Fatal("数据库连接初始化失败")
+	}
 	// 初始化 Redis 客户端
 	initRedis()
 }
@@ -72,6 +74,7 @@ func initMySQL() {
 	}
 
 	log.Println("MySQL connected successfully")
+	DB.AutoMigrate(&User{})
 }
 func initRedis() {
 	// 从配置文件中获取 Redis 配置

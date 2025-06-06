@@ -2,6 +2,7 @@
 package main
 
 import (
+	"LanshanClass1.3/global/database"
 	"LanshanClass1.3/service/LIVEGO/liveservice"
 	"log"
 	"net"
@@ -11,6 +12,7 @@ import (
 )
 
 func main() {
+	database.Init()
 	// 定义 gRPC 服务监听的地址
 	lis, err := net.Listen("tcp", "localhost:50052")
 	if err != nil {
