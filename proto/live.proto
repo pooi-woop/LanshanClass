@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+package proto;
+option go_package = ".;proto";
+
+// 定义直播课服务
+service LiveClassService {
+  // 创建直播课
+  rpc CreateLiveClass (CreateLiveClassRequest) returns (CreateLiveClassResponse);
+  // 加入直播课（双向流）
+  rpc JoinLiveClass(JoinLiveClassRequest) returns (JoinLiveClassResponse) {}
+  // 发送消息
+  rpc SendMessage (SendMessageRequest) returns (SendMessageResponse);
+  // 结束直播课
+  rpc EndLiveClass (EndLiveClassRequest) returns (EndLiveClassResponse);
+  // 发布题目
+  rpc PublishQuestion (PublishQuestionRequest) returns (PublishQuestionResponse);
+  // 提交答案
+  rpc SubmitAnswer (SubmitAnswerRequest) returns (SubmitAnswerResponse);
+  rpc GetMessages (GetMessagesRequest) returns (GetMessagesResponse);
+  // 获取答题结果统计（流式接口）
+  rpc GetAnswerStatistics (GetAnswerStatisticsRequest) returns (stream AnswerStatistics);
+}
+
+// 创建直播课请求
+message CreateLiveClassRequest {
+  string teacher_name = 1; // 教师名称
+  string class_name = 2; // 直播课名称
+  string room_name =3;
+}
+
+// 创建直播课响应
+message CreateLiveClassResponse {
+  string class_id = 1; // 直播课ID
+  string status = 2; // 状态信息
+  string stream_key = 3;
+}
+
+// 加入直播课请求
+message JoinLiveClassRequest {
+  string class_id = 1; // 直播课ID
+  string student_name = 2; // 学生名称
+}
+// 获取消息请求
+message GetMessagesRequest {
+  string class_id = 1;          // 直播课ID
+  int64 last_timestamp = 2;     // 最后收到消息的时间戳
+}
+
+// 获取消息响应
+message GetMessagesResponse {
+  repeated Message messages = 1; // 消息列表
+}
+// 加入直播课响应
+message JoinLiveClassResponse {
+  string status = 1;       // 状态信息
+  string stream_url = 2;   // 播放地址
+  string message = 3;      // 附加消息（改为普通字符串）
+}
+// 发送消息请求
+message SendMessageRequest {
+  string class_id = 1; // 直播课ID
+  string sender_name = 2; // 发送者名称
+  string message_content = 3; // 消息内容
+  Message message = 4;
+}
+
+// 发送消息响应
+message SendMessageResponse {
+  string status = 1; // 状态信息
+}
+
+// 消息类型
+message Message {
+  string sender_name = 1; // 发送者名称
+  string message_content = 2; // 消息内容
+  int64 timestamp = 3; // 时间戳
+}
+
+// 结束直播课请求
+message EndLiveClassRequest {
+  string class_id = 1;   // 直播课ID
+  string username = 2;   // 用户名
+}
+
+// 结束直播课响应
+message EndLiveClassResponse {
+  string status = 1;     // 状态信息
+}
+
+// 发布题目请求
+message PublishQuestionRequest {
+  string class_id = 1; // 直播课ID
+  string question = 2; // 题目内容
+}
+
+// 发布题目响应
+message PublishQuestionResponse {
+  string status = 1; // 状态信息
+  string question_id = 2; // 题目ID
+}
+
+// 提交答案请求
+message SubmitAnswerRequest {
+  string class_id = 1; // 直播课ID
+  string student_name = 2; // 学生名称
+  string answer = 3; // 答案内容
+  string question_id = 4; // 题目ID
+}
+
+// 提交答案响应
+message SubmitAnswerResponse {
+  string status = 1; // 状态信息
+}
+
+// 获取答题结果统计请求
+message GetAnswerStatisticsRequest {
+  string class_id = 1; // 直播课ID
+  string question_id = 2; // 题目ID
+}
+
+// 答题结果统计
+message AnswerStatistics {
+  string question_id = 1; // 题目ID
+  map<string, int32> answer_counts = 2; // 答案统计
+}
+
+// 题目类型
+message Question {
+  string question_id = 1; // 题目ID
+  string question_text = 2; // 题目内容
+}

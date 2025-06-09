@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>答题统计实时监控</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 25px;
+            margin-top: 20px;
+        }
+        /* 其他样式保持不变... */
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>答题统计实时监控</h1>
+
+    <div class="status-bar">
+        <div class="status-indicator disconnected" id="status-indicator"></div>
+        <span id="status-text">未连接</span>
+    </div>
+
+    <div id="error"></div>
+
+    <button class="btn" id="retry-btn">重新连接</button>
+
+    <div id="stats-display">
+        <p>等待数据...</p>
+    </div>
+</div>
+
+<script>
+    // 配置（修改这里！）
+    const config = {
+        classId: 'math',
+        questionId: '20250609213632.9362502',
+        apiBase: 'http://localhost:8080',
+        jwtToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyIiwiZXhwIjoxNzQ5NTUxMDIwfQ.ecH1FyG8LDrXy6rlZf-BJT7jDDkI6UMlFE2lIO-NseQ' // 替换为你的真实token
+    };
+
+    // 状态控制
+    let isConnected = false;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 3000;
+
+    // DOM元素
+    const elements = {
+        statusIndicator: document.getElementById('status-indicator'),
+        statusText: document.getElementById('status-text'),
+        errorDisplay: document.getElementById('error'),
+        statsDisplay: document.getElementById('stats-display'),
+        retryBtn: document.getElementById('retry-btn')
+    };
+
+    // 核心请求函数
+    async function fetchStatistics() {
+        try {
+            // 构建请求URL
+            const url = new URL(`${config.apiBase}/live/question/statistics`);
+            url.searchParams.append('class_id', config.classId);
+            url.searchParams.append('question_id', config.questionId);
+
+            // 发起请求
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${config.jwtToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            // 处理错误响应
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(
+                    errorData.message ||
+                    `请求失败: ${response.status} ${response.statusText}`
+                );
+            }
+
+            // 处理流式响应
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            updateStatus(true); // 连接成功
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                // 处理可能的多条消息
+                while (buffer.includes('\n')) {
+                    const lineEnd = buffer.indexOf('\n');
+                    const message = buffer.substring(0, lineEnd).trim();
+                    buffer = buffer.substring(lineEnd + 1);
+
+                    if (message) {
+                        try {
+                            const data = JSON.parse(message);
+                            updateDisplay(data);
+                        } catch (e) {
+                            console.error('JSON解析错误:', e);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            handleError(error);
+        }
+    }
+
+    // 辅助函数
+    function updateStatus(connected) {
+        isConnected = connected;
+        elements.statusIndicator.className =
+            `status-indicator ${connected ? 'connected' : 'disconnected'}`;
+        elements.statusText.textContent = connected ? '已连接' : '未连接';
+    }
+
+    function updateDisplay(data) {
+        if (!data.answer_counts) {
+            elements.statsDisplay.innerHTML = `<p>收到数据: ${JSON.stringify(data)}</p>`;
+            return;
+        }
+
+        const total = Object.values(data.answer_counts).reduce((sum, count) => sum + count, 0);
+        let html = `
+            <h3>实时统计结果</h3>
+            <p>问题ID: ${data.question_id}</p>
+            <table>
+                <tr><th>答案</th><th>人数</th><th>比例</th></tr>
+        `;
+
+        for (const [answer, count] of Object.entries(data.answer_counts)) {
+            const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+            html += `
+                <tr>
+                    <td>${answer}</td>
+                    <td>${count}</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div style="width:${percentage}%">${percentage}%</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        elements.statsDisplay.innerHTML = html + '</table>';
+    }
+
+    function handleError(error) {
+        console.error('请求错误:', error);
+        elements.errorDisplay.textContent = error.message;
+        elements.errorDisplay.style.display = 'block';
+        updateStatus(false);
+
+        if (retryCount < MAX_RETRIES) {
+            retryCount++;
+            setTimeout(fetchStatistics, RETRY_DELAY);
+        }
+    }
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+        elements.retryBtn.addEventListener('click', () => {
+            retryCount = 0;
+            fetchStatistics();
+        });
+
+        fetchStatistics(); // 初始请求
+    });
+</script>
+</body>
+</html>
