@@ -1,37 +1,6 @@
-感谢你的提醒！以下是补充并完善后的 `GetMessages` 方法的测试用例：
 
-### 获取直播课消息
-- **请求**
-  - **URL**：`GET /live/message/get`
-  - **Header**：
-    ```
-    Authorization: Bearer <token>
-    ```
-  - **Query Parameters**：
-    ```
-    class_id=数学课&last_timestamp=1680307200
-    ```
-- **预期响应**
-  - **状态码**：`200 OK`
-  - **Body**：
-    ```json
-    {
-      "messages": [
-        {
-          "sender_name": "张老师",
-          "message_content": "欢迎来到数学课！",
-          "timestamp": 1680307201
-        },
-        {
-          "sender_name": "小明",
-          "message_content": "老师好！",
-          "timestamp": 1680307202
-        }
-      ]
-    }
-    ```
 
-## 完整的 README.md
+
 
 # LanshanClass v1.5
 
